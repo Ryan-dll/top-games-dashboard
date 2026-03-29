@@ -66,7 +66,7 @@ th { text-align: left; padding: 9px 12px; font-weight: 500; color: var(--text2);
 td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg2); }
-.bar-wrap { display: flex; align-items: center; gap: 8px; }
+.bar-wrap { display: flex; align-items: center; gap: 8px; overflow: visible; }
 .bar { height: 5px; border-radius: 3px; background: var(--green); min-width: 2px; flex-shrink: 0; }
 .pcount { color: var(--text2); font-size: 12px; }
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; display: inline-block; }
@@ -271,10 +271,16 @@ function initialLoad() {
       if (currentGames.length) {
         takeSnapshot();
       }
+      return fetchUpComing();
+    })
+    .then(function() {
+      if (upComingGames.length) {
+        takeUpComingSnapshot();
+      }
       scheduleAuto();
     })
     .catch(function() {
-      // fetchData already handles status update and logging
+      // fetchData or fetchUpComing already handles status update and logging
     });
 }
 
@@ -412,7 +418,7 @@ function renderUpComingTable() {
     var g = games[i];
     var sc = approvalScore(g);
     var cls = sc >= 85 ? 'score-hi' : sc >= 65 ? 'score-mid' : 'score-lo';
-    var w = Math.max(2, Math.round(g.playerCount / maxP * 150));
+    var w = Math.max(2, Math.round(g.playerCount / maxP * 300));
     var age = (g.ageRecommendationDisplayName || '').replace('Maturity: ', '');
     rows += '<tr>' +
       '<td class="rank">' + (i + 1) + '</td>' +
