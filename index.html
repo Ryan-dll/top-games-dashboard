@@ -346,8 +346,9 @@ function copyRaw() {
   navigator.clipboard.writeText(document.getElementById('json-raw').textContent).then(function() { alert('Copied!'); });
 }
 
-window.addEventListener("load", fetchData);
-document.addEventListener("DOMContentLoaded", fetchTopGames);
+document.addEventListener("DOMContentLoaded", () => {
+    fetchData();
+});
 </script>
 </body>
 </html>
