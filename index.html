@@ -196,20 +196,47 @@ function fetchData() {
     })
     .then(function(data) {
 
-      // ---- Normalize Roblox API response ----
-      var items =
-        (data.games && data.games.items) ||
-        data.items ||
-        [];
+      // ---- Find games array from Roblox response ----
+      var items = [];
 
+      // old format
+      if (data.games && Array.isArray(data.games.items)) {
+        items = data.games.items;
+      }
+      // alternate format
+      else if (Array.isArray(data.items)) {
+        items = data.items;
+      }
+      // NEW explore-api structure
+      else if (
+        data.contentMetadata &&
+        Array.isArray(data.contentMetadata.GameTiles)
+      ) {
+        items = data.contentMetadata.GameTiles;
+      }
+
+      console.log("Detected items:", items.length);
       // Convert Roblox format → your expected format
+
       currentGames = items.map(function(g) {
         return {
           universeId: g.universeId,
           name: g.name || g.title || "Unknown",
-          playerCount: g.playerCount || g.concurrentPlayers || 0,
-          totalUpVotes: g.totalUpVotes || g.upVotes || 0,
-          totalDownVotes: g.totalDownVotes || g.downVotes || 0,
+          playerCount:
+            g.playerCount ||
+            g.concurrentPlayers ||
+            g.playing ||
+            0,
+          totalUpVotes:
+            g.totalUpVotes ||
+            g.upVotes ||
+            g.likes ||
+            0,
+          totalDownVotes:
+            g.totalDownVotes ||
+            g.downVotes ||
+            g.dislikes ||
+            0,
           ageRecommendationDisplayName:
             g.ageRecommendationDisplayName ||
             g.ageRecommendation ||
