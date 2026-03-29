@@ -189,54 +189,27 @@ function switchTab(id) {
 function fetchData() {
   setStatus('loading', 'Fetching...');
 
-  fetch('https://still-firefly-ae3d.1-ryanshore.workers.dev/')
+  fetch('https://apis.roblox.com/explore-api/v1/get-sort-content?sessionId=4240d5e0-16b5-44db-a8bf-e95615365e86&sortId=top-playing-now')
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
     })
     .then(function(data) {
 
-      // ---- Find games array from Roblox response ----
-      var items = [];
+      // ---- Normalize Roblox API response ----
+      var items =
+        (data.games && data.games.items) ||
+        data.items ||
+        [];
 
-      // old format
-      if (data.games && Array.isArray(data.games.items)) {
-        items = data.games.items;
-      }
-      // alternate format
-      else if (Array.isArray(data.items)) {
-        items = data.items;
-      }
-      // NEW explore-api structure
-      else if (
-        data.contentMetadata &&
-        Array.isArray(data.contentMetadata.GameTiles)
-      ) {
-        items = data.contentMetadata.GameTiles;
-      }
-
-      console.log("Detected items:", items.length);
       // Convert Roblox format → your expected format
-
       currentGames = items.map(function(g) {
         return {
           universeId: g.universeId,
           name: g.name || g.title || "Unknown",
-          playerCount:
-            g.playerCount ||
-            g.concurrentPlayers ||
-            g.playing ||
-            0,
-          totalUpVotes:
-            g.totalUpVotes ||
-            g.upVotes ||
-            g.likes ||
-            0,
-          totalDownVotes:
-            g.totalDownVotes ||
-            g.downVotes ||
-            g.dislikes ||
-            0,
+          playerCount: g.playerCount || g.concurrentPlayers || 0,
+          totalUpVotes: g.totalUpVotes || g.upVotes || 0,
+          totalDownVotes: g.totalDownVotes || g.downVotes || 0,
           ageRecommendationDisplayName:
             g.ageRecommendationDisplayName ||
             g.ageRecommendation ||
