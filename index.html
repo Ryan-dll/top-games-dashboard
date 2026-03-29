@@ -67,7 +67,7 @@ td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); vertical-align
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg2); }
 .bar-wrap { display: flex; align-items: center; gap: 8px; overflow: visible; }
-.bar { height: 10px; width: 10px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+.bar { height: 10px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
 .pcount { color: var(--text2); font-size: 12px; }
 .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; display: inline-block; }
 .score-hi { background: var(--green-bg); color: var(--green-text); }
@@ -412,9 +412,8 @@ function renderUpComingTable() {
   else if (col === 'totalUpVotes') games = games.slice().sort(function(a, b) { return b.totalUpVotes - a.totalUpVotes; });
   var tbody = document.getElementById('upcoming-game-table');
   if (!games.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No games found.</td></tr>'; return; }
-  var playerCounts = games.map(function(g) { return g.playerCount; });
-  var minP = Math.min.apply(null, playerCounts);
-  var maxP = Math.max.apply(null, playerCounts);
+  var minP = Math.min.apply(null, upComingGames.map(function(g) { return g.playerCount; }));
+  var maxP = Math.max.apply(null, upComingGames.map(function(g) { return g.playerCount; }));
   var rows = '';
   for (var i = 0; i < games.length; i++) {
     var g = games[i];
@@ -426,7 +425,7 @@ function renderUpComingTable() {
     rows += '<tr>' +
       '<td class="rank">' + (i + 1) + '</td>' +
       '<td title="' + g.name + '">' + g.name + '</td>' +
-      '<td><div class="bar-wrap"><div class="bar" style="background-color: hsl(' + hue + ', 100%, 50%);"></div><span class="pcount">' + g.playerCount.toLocaleString() + '</span></div></td>' +
+      '<td><div class="bar-wrap"><div class="bar" style="width:10px; background-color: hsl(' + hue + ', 100%, 50%);"></div><span class="pcount">' + g.playerCount.toLocaleString() + '</span></div></td>' +
       '<td><span class="badge ' + cls + '">' + sc + '%</span></td>' +
       '<td><span class="age-badge">' + age + '</span></td>' +
       '</tr>';
