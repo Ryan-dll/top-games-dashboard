@@ -137,6 +137,8 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
     <div class="toolbar">
       <button class="btn primary" onclick="takeSnapshot()">Snapshot now</button>
       <button class="btn" onclick="clearSnapshots()">Clear all</button>
+      <input type="checkbox" id="auto-download" onchange="toggleAutoDownload()">
+      <label for="auto-download" style="font-size:12px;color:var(--text2);">Auto-download snapshots</label>
       <span style="font-size:12px;color:var(--text2);">Auto-snapshots every hour while this tab is open</span>
     </div>
     <div class="snap-list" id="snap-list"></div>
@@ -158,6 +160,7 @@ var snapshots = [];
 var autoTimer = null;
 var countdownTimer = null;
 var nextSnapAt = null;
+var autoDownloadEnabled = false;
 
 function switchTab(id) {
   var ids = ['viewer', 'snapshots', 'raw'];
@@ -247,6 +250,10 @@ function setStatus(state, msg) {
   document.getElementById('status-text').textContent = msg;
 }
 
+function toggleAutoDownload() {
+  autoDownloadEnabled = document.getElementById('auto-download').checked;
+}
+
 function approvalScore(g) {
   var t = (g.totalUpVotes || 0) + (g.totalDownVotes || 0);
   return t ? Math.round(g.totalUpVotes / t * 100) : 0;
@@ -303,6 +310,9 @@ function takeSnapshot() {
   snapshots.push(snap);
   renderMetrics();
   renderSnapList();
+  if (autoDownloadEnabled) {
+    downloadSnap(snapshots.length - 1);
+  }
 }
 
 function renderSnapList() {
