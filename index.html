@@ -346,9 +346,16 @@ function copyRaw() {
   navigator.clipboard.writeText(document.getElementById('json-raw').textContent).then(function() { alert('Copied!'); });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function init() {
+  console.log('Roblox Trend Tracker init', 'document.readyState=', document.readyState);
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fetchData);
+  } else {
     fetchData();
-});
+  }
+}
+
+init();
 </script>
 </body>
 </html>
