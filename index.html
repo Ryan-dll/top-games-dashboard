@@ -180,12 +180,20 @@ function fetchData() {
       return r.json();
     })
     .then(function(data) {
+      console.log('fetchData: payload', data);
 
       // ---- Normalize Roblox API response ----
       var items =
-        (data.games && data.games.items) ||
-        data.items ||
+        (data && data.games && Array.isArray(data.games.items) && data.games.items) ||
+        (data && Array.isArray(data.items) && data.items) ||
+        (Array.isArray(data) && data) ||
+        (data && Array.isArray(data.data) && data.data) ||
+        (data && Array.isArray(data.list) && data.list) ||
         [];
+
+      if (!items.length) {
+        console.warn('fetchData: no items found in payload');
+      }
 
       // Convert Roblox format → your expected format
       currentGames = items.map(function(g) {
