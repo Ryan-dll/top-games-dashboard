@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roblox Trend Tracker</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff; --bg2: #f5f5f3; --bg3: #eeede9;
+  --text: #1a1a1a; --text2: #666660; --text3: #999990;
+  --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.2);
+  --green: #1D9E75; --green-bg: #E1F5EE; --green-text: #0F6E56;
+  --amber-bg: #FAEEDA; --amber-text: #854F0B;
+  --red-bg: #FCEBEB; --red-text: #A32D2D;
+  --radius: 8px; --radius-lg: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2b;
+    --text: #e8e8e4; --text2: #999990; --text3: #666660;
+    --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+    --green-bg: #04342C; --green-text: #9FE1CB;
+    --amber-bg: #412402; --amber-text: #FAC775;
+    --red-bg: #501313; --red-text: #F7C1C1;
+  }
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+.header { padding: 20px 28px 0; border-bottom: 0.5px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+.header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.header-top h1 { font-size: 17px; font-weight: 600; }
+.status-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); margin-left: 4px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.dot.live { background: var(--green); animation: pulse 2s infinite; }
+.dot.error { background: #E24B4A; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.countdown { margin-left: auto; font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; }
+.tabs { display: flex; gap: 2px; }
+.tab { padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: none; color: var(--text2); border-bottom: 2px solid transparent; margin-bottom: -0.5px; }
+.tab.active { color: var(--text); border-bottom-color: var(--text); }
+.tab:hover { color: var(--text); }
+.main { padding: 20px 28px; }
+.panel { display: none; }
+.panel.active { display: block; }
+.toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+input[type=text], select {
+  height: 34px; padding: 0 10px; border: 0.5px solid var(--border2);
+  border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 13px; outline: none;
+}
+input[type=text]:focus, select:focus { border-color: var(--text2); }
+input[type=text] { flex: 1; min-width: 180px; }
+.btn { height: 34px; padding: 0 14px; cursor: pointer; border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); border-radius: var(--radius); font-size: 13px; white-space: nowrap; font-weight: 500; }
+.btn:hover { background: var(--bg2); }
+.btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.btn.primary:hover { opacity: 0.85; }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; margin-bottom: 18px; }
+.metric { background: var(--bg2); border-radius: var(--radius); padding: 12px 16px; }
+.metric-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.metric-value { font-size: 24px; font-weight: 600; }
+.metric-value.sm { font-size: 14px; padding-top: 5px; }
+.table-wrap { border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: auto; max-height: calc(100vh - 320px); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+th { text-align: left; padding: 9px 12px; font-weight: 500; color: var(--text2); background: var(--bg2); border-bottom: 0.5px solid var(--border); font-size: 12px; position: sticky; top: 0; }
+td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg2); }
+.bar-wrap { display: flex; align-items: center; gap: 8px; }
+.bar { height: 5px; border-radius: 3px; background: var(--green); min-width: 2px; flex-shrink: 0; }
+.pcount { color: var(--text2); font-size: 12px; }
+.badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; display: inline-block; }
+.score-hi { background: var(--green-bg); color: var(--green-text); }
+.score-mid { background: var(--amber-bg); color: var(--amber-text); }
+.score-lo { background: var(--red-bg); color: var(--red-text); }
+.age-badge { background: var(--bg3); color: var(--text2); font-size: 11px; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+.rank { color: var(--text2); font-weight: 500; }
+.snap-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.snap-item { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg2); border-radius: var(--radius); font-size: 13px; }
+.snap-time { font-weight: 500; flex: 1; }
+.snap-count { color: var(--text2); }
+.snap-action { font-size: 12px; cursor: pointer; text-decoration: underline; color: var(--text); }
+.snap-action.muted { color: var(--text2); }
+.empty { padding: 40px; text-align: center; color: var(--text2); font-size: 13px; }
+.ai-wrap { display: flex; gap: 8px; margin-bottom: 14px; }
+.ai-wrap input { flex: 1; }
+.ai-box { border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; min-height: 160px; }
+.ai-response { font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
+.ai-hint { font-size: 12px; color: var(--text2); margin-top: 10px; }
+.json-wrap { background: var(--bg2); border-radius: var(--radius-lg); padding: 16px; overflow: auto; max-height: calc(100vh - 220px); }
+pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 12px; color: var(--text2); white-space: pre; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <h1>Roblox Trend Tracker</h1>
+    <div class="status-pill">
+      <div class="dot" id="status-dot"></div>
+      <span id="status-text">Connecting...</span>
+    </div>
+    <span class="countdown" id="countdown"></span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('viewer')">Live viewer</button>
+    <button class="tab" onclick="switchTab('snapshots')">Snapshots</button>
+    <button class="tab" onclick="switchTab('trends')">AI trends</button>
+    <button class="tab" onclick="switchTab('raw')">Raw JSON</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div id="panel-viewer" class="panel active">
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="Search games..." oninput="renderTable()">
+      <select id="sort-col" onchange="renderTable()">
+        <option value="playerCount">Players (desc)</option>
+        <option value="score">Approval %</option>
+        <option value="name">Name A-Z</option>
+        <option value="totalUpVotes">Total upvotes</option>
+      </select>
+      <button class="btn primary" onclick="fetchData()">Refresh</button>
+      <button class="btn" onclick="takeSnapshot()">Take snapshot</button>
+    </div>
+    <div class="metrics" id="metrics"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:42px">#</th>
+          <th>Game</th>
+          <th style="width:210px">Players</th>
+          <th style="width:90px">Approval</th>
+          <th style="width:90px">Age</th>
+        </tr></thead>
+        <tbody id="game-table"><tr><td colspan="5" class="empty">Fetching data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="panel-snapshots" class="panel">
+    <div class="toolbar">
+      <button class="btn primary" onclick="takeSnapshot()">Snapshot now</button>
+      <button class="btn" onclick="clearSnapshots()">Clear all</button>
+      <span style="font-size:12px;color:var(--text2);">Auto-snapshots every hour while this tab is open</span>
+    </div>
+    <div class="snap-list" id="snap-list"></div>
+    <div id="snap-empty" class="empty">No snapshots yet — fetch data and click "Take snapshot".</div>
+  </div>
+
+  <div id="panel-trends" class="panel">
+    <div class="ai-wrap">
+      <input type="text" id="ai-input" placeholder="Ask about trends, risers, genre shifts..." onkeydown="if(event.key==='Enter')runAI()">
+      <button class="btn primary" onclick="runAI()">Analyze</button>
+    </div>
+    <div class="ai-box">
+      <div class="ai-response" id="ai-response">Load a few snapshots then ask things like "Which games are rising fast?", "What genres are trending?", or "Summarize rank changes since my first snapshot."</div>
+    </div>
+    <div class="ai-hint" id="ai-hint"></div>
+  </div>
+
+  <div id="panel-raw" class="panel">
+    <div class="toolbar">
+      <button class="btn" onclick="copyRaw()">Copy JSON</button>
+    </div>
+    <div class="json-wrap"><pre id="json-raw">No data loaded yet.</pre></div>
+  </div>
+
+</div>
+
+<script>
+var currentGames = [];
+var snapshots = [];
+var autoTimer = null;
+var countdownTimer = null;
+var nextSnapAt = null;
+
+function switchTab(id) {
+  var ids = ['viewer', 'snapshots', 'trends', 'raw'];
+  document.querySelectorAll('.tab').forEach(function(t, i) {
+    t.classList.toggle('active', ids[i] === id);
+  });
+  document.querySelectorAll('.panel').forEach(function(p) {
+    p.classList.remove('active');
+  });
+  document.getElementById('panel-' + id).classList.add('active');
+  if (id === 'snapshots') renderSnapList();
+}
+
+function fetchData() {
+  setStatus('loading', 'Fetching...');
+
+  fetch('https://apis.roblox.com/explore-api/v1/get-sort-content?sessionId=4240d5e0-16b5-44db-a8bf-e95615365e86&sortId=top-playing-now')
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+
+      // ---- Normalize Roblox API response ----
+      var items =
+        (data.games && data.games.items) ||
+        data.items ||
+        [];
+
+      // Convert Roblox format → your expected format
+      currentGames = items.map(function(g) {
+        return {
+          universeId: g.universeId,
+          name: g.name || g.title || "Unknown",
+          playerCount: g.playerCount || g.concurrentPlayers || 0,
+          totalUpVotes: g.totalUpVotes || g.upVotes || 0,
+          totalDownVotes: g.totalDownVotes || g.downVotes || 0,
+          ageRecommendationDisplayName:
+            g.ageRecommendationDisplayName ||
+            g.ageRecommendation ||
+            ""
+        };
+      });
+
+      if (!currentGames.length)
+        throw new Error('No games in response');
+
+      document.getElementById('json-raw').textContent =
+        JSON.stringify(data, null, 2);
+
+      renderMetrics();
+      renderTable();
+
+      setStatus(
+        'live',
+        'Live - updated ' + new Date().toLocaleTimeString()
+      );
+
+      scheduleAuto();
+    })
+    .catch(function(e) {
+      setStatus('error', 'Error: ' + e.message);
+      console.error(e);
+    });
+}
+
+function setStatus(state, msg) {
+  var dot = document.getElementById('status-dot');
+  dot.className = 'dot' + (state === 'live' ? ' live' : state === 'error' ? ' error' : '');
+  document.getElementById('status-text').textContent = msg;
+}
+
+function approvalScore(g) {
+  var t = (g.totalUpVotes || 0) + (g.totalDownVotes || 0);
+  return t ? Math.round(g.totalUpVotes / t * 100) : 0;
+}
+
+function renderMetrics() {
+  var total = currentGames.reduce(function(s, g) { return s + g.playerCount; }, 0);
+  var avg = Math.round(currentGames.reduce(function(s, g) { return s + approvalScore(g); }, 0) / currentGames.length);
+  var top = currentGames[0];
+  var topName = top ? top.name.replace(/[^\x20-\x7E]/g, '').trim().slice(0, 22) || top.name.slice(0, 22) : '-';
+  document.getElementById('metrics').innerHTML =
+    '<div class="metric"><div class="metric-label">Games tracked</div><div class="metric-value">' + currentGames.length + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Total players</div><div class="metric-value">' + (total / 1e6).toFixed(2) + 'M</div></div>' +
+    '<div class="metric"><div class="metric-label">Avg approval</div><div class="metric-value">' + avg + '%</div></div>' +
+    '<div class="metric"><div class="metric-label">Snapshots saved</div><div class="metric-value">' + snapshots.length + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Top game</div><div class="metric-value sm">' + topName + '</div></div>';
+}
+
+function renderTable() {
+  var q = document.getElementById('search').value.toLowerCase();
+  var col = document.getElementById('sort-col').value;
+  var games = currentGames.filter(function(g) { return g.name.toLowerCase().indexOf(q) !== -1; });
+  if (col === 'score') games = games.slice().sort(function(a, b) { return approvalScore(b) - approvalScore(a); });
+  else if (col === 'name') games = games.slice().sort(function(a, b) { return a.name.localeCompare(b.name); });
+  else if (col === 'totalUpVotes') games = games.slice().sort(function(a, b) { return b.totalUpVotes - a.totalUpVotes; });
+  var maxP = games[0] ? games[0].playerCount : 1;
+  var tbody = document.getElementById('game-table');
+  if (!games.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No games found.</td></tr>'; return; }
+  var rows = '';
+  for (var i = 0; i < games.length; i++) {
+    var g = games[i];
+    var sc = approvalScore(g);
+    var cls = sc >= 85 ? 'score-hi' : sc >= 65 ? 'score-mid' : 'score-lo';
+    var w = Math.max(2, Math.round(g.playerCount / maxP * 150));
+    var age = (g.ageRecommendationDisplayName || '').replace('Maturity: ', '');
+    rows += '<tr>' +
+      '<td class="rank">' + (i + 1) + '</td>' +
+      '<td title="' + g.name + '">' + g.name + '</td>' +
+      '<td><div class="bar-wrap"><div class="bar" style="width:' + w + 'px"></div><span class="pcount">' + g.playerCount.toLocaleString() + '</span></div></td>' +
+      '<td><span class="badge ' + cls + '">' + sc + '%</span></td>' +
+      '<td><span class="age-badge">' + age + '</span></td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = rows;
+}
+
+function takeSnapshot() {
+  if (!currentGames.length) { alert('Fetch data first.'); return; }
+  var snap = { ts: new Date().toISOString(), games: [] };
+  for (var i = 0; i < currentGames.length; i++) {
+    var g = currentGames[i];
+    snap.games.push({ universeId: g.universeId, name: g.name, playerCount: g.playerCount, score: approvalScore(g), upVotes: g.totalUpVotes, downVotes: g.totalDownVotes });
+  }
+  snapshots.push(snap);
+  renderMetrics();
+  renderSnapList();
+  switchTab('snapshots');
+}
+
+function renderSnapList() {
+  var el = document.getElementById('snap-list');
+  var empty = document.getElementById('snap-empty');
+  if (!snapshots.length) { el.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  var html = '';
+  for (var ri = 0; ri < snapshots.length; ri++) {
+    var i = snapshots.length - 1 - ri;
+    var s = snapshots[i];
+    html += '<div class="snap-item">' +
+      '<div class="snap-time">' + new Date(s.ts).toLocaleString() + '</div>' +
+      '<div class="snap-count">' + s.games.length + ' games</div>' +
+      '<span class="snap-action" onclick="downloadSnap(' + i + ')">Download JSON</span>' +
+      '<span class="snap-action muted" onclick="deleteSnap(' + i + ')">Remove</span>' +
+      '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function downloadSnap(i) {
+  var s = snapshots[i];
+  var a = document.createElement('a');
+  a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(s, null, 2));
+  a.download = 'roblox-snapshot-' + s.ts.replace(/[:.]/g, '-') + '.json';
+  a.click();
+}
+
+function deleteSnap(i) { snapshots.splice(i, 1); renderSnapList(); renderMetrics(); }
+
+function clearSnapshots() {
+  if (snapshots.length && confirm('Clear all ' + snapshots.length + ' snapshots?')) {
+    snapshots = []; renderSnapList(); renderMetrics();
+  }
+}
+
+function scheduleAuto() {
+  if (autoTimer) clearInterval(autoTimer);
+  if (countdownTimer) clearInterval(countdownTimer);
+  nextSnapAt = Date.now() + 14400000;
+  updateCountdown();
+  countdownTimer = setInterval(updateCountdown, 15000);
+  autoTimer = setInterval(function() {
+    fetchData();
+    setTimeout(takeSnapshot, 3000);
+  }, 14400000);
+}
+
+function updateCountdown() {
+  var el = document.getElementById('countdown');
+  if (!nextSnapAt) { el.textContent = ''; return; }
+  var mins = Math.max(0, Math.round((nextSnapAt - Date.now()) / 60000));
+  el.textContent = mins > 0 ? 'Auto-snapshot in ' + mins + 'm' : '';
+}
+
+function runAI() {
+  var q = document.getElementById('ai-input').value.trim();
+  if (!q) return;
+  var respEl = document.getElementById('ai-response');
+  var hintEl = document.getElementById('ai-hint');
+  if (!currentGames.length) { respEl.textContent = 'Fetch data first.'; return; }
+  respEl.textContent = 'Analyzing...';
+  hintEl.textContent = '';
+
+  var snapshotLines = [];
+  for (var si = Math.max(0, snapshots.length - 10); si < snapshots.length; si++) {
+    var s = snapshots[si];
+    var top5 = s.games.slice(0, 5).map(function(g) {
+      return g.name + ' (' + g.playerCount.toLocaleString() + ' players, ' + g.score + '% approval)';
+    }).join(', ');
+    snapshotLines.push('Snapshot ' + (si + 1) + ' [' + new Date(s.ts).toLocaleString() + ']: ' + s.games.length + ' games. Top 5: ' + top5);
+  }
+
+  var currentLines = [];
+  for (var ci = 0; ci < Math.min(20, currentGames.length); ci++) {
+    var g = currentGames[ci];
+    currentLines.push((ci + 1) + '. ' + g.name + ' - ' + g.playerCount.toLocaleString() + ' players, ' + approvalScore(g) + '% approval');
+  }
+
+  var userContent = 'Current top 20:\n' + currentLines.join('\n') + '\n\n' +
+    (snapshots.length ? 'Snapshot history (last ' + Math.min(snapshots.length, 10) + '):\n' + snapshotLines.join('\n') : 'No snapshots yet.') +
+    '\n\nQuestion: ' + q;
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: 'You are a Roblox game trends analyst. The user tracks the top ~98 games on Roblox by concurrent players. Answer questions about trends, risers, fallers, genre shifts, and player behavior. Be concise and specific. Use numbers. Highlight notable changes.',
+      messages: [{ role: 'user', content: userContent }]
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    var text = (data.content || []).map(function(b) { return b.text || ''; }).join('');
+    respEl.textContent = text || 'No response.';
+    hintEl.textContent = snapshots.length < 3 ? 'Tip: Take more snapshots over time for richer trend analysis.' : 'Analyzing across ' + snapshots.length + ' snapshots.';
+  })
+  .catch(function(e) {
+    respEl.textContent = 'AI error: ' + e.message;
+  });
+}
+
+function copyRaw() {
+  navigator.clipboard.writeText(document.getElementById('json-raw').textContent).then(function() { alert('Copied!'); });
+}
+
+fetchData();
+</script>
+</body>
+</html>
