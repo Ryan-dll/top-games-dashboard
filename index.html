@@ -99,6 +99,7 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
   </div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('viewer')">Live viewer</button>
+    <button class="tab" onclick="switchTab('upcoming')">Up and Coming</button>
     <button class="tab" onclick="switchTab('snapshots')">Snapshots</button>
     <button class="tab" onclick="switchTab('raw')">Raw JSON</button>
   </div>
@@ -133,8 +134,39 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
     </div>
   </div>
 
+  <div id="panel-upcoming" class="panel">
+    <div class="toolbar">
+      <input type="text" id="upcoming-search" placeholder="Search games..." oninput="renderUpComingTable()">
+      <select id="upcoming-sort-col" onchange="renderUpComingTable()">
+        <option value="playerCount">Players (desc)</option>
+        <option value="score">Approval %</option>
+        <option value="name">Name A-Z</option>
+        <option value="totalUpVotes">Total upvotes</option>
+      </select>
+      <button class="btn primary" onclick="fetchUpComing()">Refresh</button>
+      <button class="btn" onclick="takeUpComingSnapshot()">Take snapshot</button>
+    </div>
+    <div class="metrics" id="upcoming-metrics"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:42px">#</th>
+          <th>Game</th>
+          <th style="width:210px">Players</th>
+          <th style="width:90px">Approval</th>
+          <th style="width:90px">Age</th>
+        </tr></thead>
+        <tbody id="upcoming-game-table"><tr><td colspan="5" class="empty">Fetching data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
   <div id="panel-snapshots" class="panel">
     <div class="toolbar">
+      <select id="snap-type" onchange="renderSnapList()">
+        <option value="top">Top Games</option>
+        <option value="upcoming">Up and Coming</option>
+      </select>
       <button class="btn primary" onclick="takeSnapshot()">Snapshot now</button>
       <button class="btn" onclick="clearSnapshots()">Clear all</button>
       <input type="checkbox" id="auto-download" onchange="toggleAutoDownload()">
@@ -157,13 +189,15 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
 <script>
 var currentGames = [];
 var snapshots = [];
+var upComingGames = [];
+var upComingSnapshots = [];
 var autoTimer = null;
 var countdownTimer = null;
 var nextSnapAt = null;
 var autoDownloadEnabled = false;
 
 function switchTab(id) {
-  var ids = ['viewer', 'snapshots', 'raw'];
+  var ids = ['viewer', 'upcoming', 'snapshots', 'raw'];
   document.querySelectorAll('.tab').forEach(function(t, i) {
     t.classList.toggle('active', ids[i] === id);
   });
@@ -177,7 +211,7 @@ function switchTab(id) {
 function fetchData() {
   setStatus('loading', 'Fetching...');
 
-  return fetch('https://still-firefly-ae3d.1-ryanshore.workers.dev/')
+  return fetch('https://top-games.1-ryanshore.workers.dev/')
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
@@ -244,6 +278,56 @@ function initialLoad() {
     });
 }
 
+function fetchUpComing() {
+  setStatus('loading', 'Fetching...');
+
+  return fetch('https://up-and-coming.1-ryanshore.workers.dev/')
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      var items =
+        (data && data.games && Array.isArray(data.games) && data.games) ||
+        [];
+
+      upComingGames = items.map(function(g) {
+        return {
+          universeId: g.universeId,
+          name: g.name || g.title || "Unknown",
+          playerCount: g.playerCount || g.concurrentPlayers || 0,
+          totalUpVotes: g.totalUpVotes || g.upVotes || 0,
+          totalDownVotes: g.totalDownVotes || g.downVotes || 0,
+          ageRecommendationDisplayName:
+            g.ageRecommendationDisplayName ||
+            g.ageRecommendation ||
+            ""
+        };
+      });
+
+      if (!upComingGames.length)
+        throw new Error('No games in response');
+
+      document.getElementById('json-raw').textContent =
+        JSON.stringify(data, null, 2);
+
+      renderUpComingMetrics();
+      renderUpComingTable();
+
+      setStatus(
+        'live',
+        'Live - updated ' + new Date().toLocaleTimeString()
+      );
+
+      return upComingGames;
+    })
+    .catch(function(e) {
+      setStatus('error', 'Error: ' + e.message);
+      console.error(e);
+      throw e;
+    });
+}
+
 function setStatus(state, msg) {
   var dot = document.getElementById('status-dot');
   dot.className = 'dot' + (state === 'live' ? ' live' : state === 'error' ? ' error' : '');
@@ -269,6 +353,19 @@ function renderMetrics() {
     '<div class="metric"><div class="metric-label">Total players</div><div class="metric-value">' + (total / 1e6).toFixed(2) + 'M</div></div>' +
     '<div class="metric"><div class="metric-label">Avg approval</div><div class="metric-value">' + avg + '%</div></div>' +
     '<div class="metric"><div class="metric-label">Snapshots saved</div><div class="metric-value">' + snapshots.length + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Top game</div><div class="metric-value sm">' + topName + '</div></div>';
+}
+
+function renderUpComingMetrics() {
+  var total = upComingGames.reduce(function(s, g) { return s + g.playerCount; }, 0);
+  var avg = Math.round(upComingGames.reduce(function(s, g) { return s + approvalScore(g); }, 0) / upComingGames.length);
+  var top = upComingGames[0];
+  var topName = top ? top.name.replace(/[^\x20-\x7E]/g, '').trim().slice(0, 22) || top.name.slice(0, 22) : '-';
+  document.getElementById('upcoming-metrics').innerHTML =
+    '<div class="metric"><div class="metric-label">Games tracked</div><div class="metric-value">' + upComingGames.length + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Total players</div><div class="metric-value">' + (total / 1e6).toFixed(2) + 'M</div></div>' +
+    '<div class="metric"><div class="metric-label">Avg approval</div><div class="metric-value">' + avg + '%</div></div>' +
+    '<div class="metric"><div class="metric-label">Snapshots saved</div><div class="metric-value">' + upComingSnapshots.length + '</div></div>' +
     '<div class="metric"><div class="metric-label">Top game</div><div class="metric-value sm">' + topName + '</div></div>';
 }
 
@@ -300,9 +397,37 @@ function renderTable() {
   tbody.innerHTML = rows;
 }
 
+function renderUpComingTable() {
+  var q = document.getElementById('upcoming-search').value.toLowerCase();
+  var col = document.getElementById('upcoming-sort-col').value;
+  var games = upComingGames.filter(function(g) { return g.name.toLowerCase().indexOf(q) !== -1; });
+  if (col === 'score') games = games.slice().sort(function(a, b) { return approvalScore(b) - approvalScore(a); });
+  else if (col === 'name') games = games.slice().sort(function(a, b) { return a.name.localeCompare(b.name); });
+  else if (col === 'totalUpVotes') games = games.slice().sort(function(a, b) { return b.totalUpVotes - a.totalUpVotes; });
+  var maxP = games[0] ? games[0].playerCount : 1;
+  var tbody = document.getElementById('upcoming-game-table');
+  if (!games.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No games found.</td></tr>'; return; }
+  var rows = '';
+  for (var i = 0; i < games.length; i++) {
+    var g = games[i];
+    var sc = approvalScore(g);
+    var cls = sc >= 85 ? 'score-hi' : sc >= 65 ? 'score-mid' : 'score-lo';
+    var w = Math.max(2, Math.round(g.playerCount / maxP * 150));
+    var age = (g.ageRecommendationDisplayName || '').replace('Maturity: ', '');
+    rows += '<tr>' +
+      '<td class="rank">' + (i + 1) + '</td>' +
+      '<td title="' + g.name + '">' + g.name + '</td>' +
+      '<td><div class="bar-wrap"><div class="bar" style="width:' + w + 'px"></div><span class="pcount">' + g.playerCount.toLocaleString() + '</span></div></td>' +
+      '<td><span class="badge ' + cls + '">' + sc + '%</span></td>' +
+      '<td><span class="age-badge">' + age + '</span></td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = rows;
+}
+
 function takeSnapshot() {
   if (!currentGames.length) { alert('Fetch data first.'); return; }
-  var snap = { ts: new Date().toISOString(), games: [] };
+  var snap = { ts: new Date().toISOString(), games: [], type: 'top' };
   for (var i = 0; i < currentGames.length; i++) {
     var g = currentGames[i];
     snap.games.push({ universeId: g.universeId, name: g.name, playerCount: g.playerCount, score: approvalScore(g), upVotes: g.totalUpVotes, downVotes: g.totalDownVotes });
@@ -311,42 +436,70 @@ function takeSnapshot() {
   renderMetrics();
   renderSnapList();
   if (autoDownloadEnabled) {
-    downloadSnap(snapshots.length - 1);
+    downloadSnap(snapshots.length - 1, 'top');
+  }
+}
+
+function takeUpComingSnapshot() {
+  if (!upComingGames.length) { alert('Fetch data first.'); return; }
+  var snap = { ts: new Date().toISOString(), games: [], type: 'upcoming' };
+  for (var i = 0; i < upComingGames.length; i++) {
+    var g = upComingGames[i];
+    snap.games.push({ universeId: g.universeId, name: g.name, playerCount: g.playerCount, score: approvalScore(g), upVotes: g.totalUpVotes, downVotes: g.totalDownVotes });
+  }
+  upComingSnapshots.push(snap);
+  renderUpComingMetrics();
+  renderSnapList();
+  switchTab('snapshots');
+  if (autoDownloadEnabled) {
+    downloadSnap(upComingSnapshots.length - 1, 'upcoming');
   }
 }
 
 function renderSnapList() {
+  var type = document.getElementById('snap-type').value;
+  var snaps = type === 'top' ? snapshots : upComingSnapshots;
   var el = document.getElementById('snap-list');
   var empty = document.getElementById('snap-empty');
-  if (!snapshots.length) { el.innerHTML = ''; empty.style.display = ''; return; }
+  if (!snaps.length) { el.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   var html = '';
-  for (var ri = 0; ri < snapshots.length; ri++) {
-    var i = snapshots.length - 1 - ri;
-    var s = snapshots[i];
+  for (var ri = 0; ri < snaps.length; ri++) {
+    var i = snaps.length - 1 - ri;
+    var s = snaps[i];
     html += '<div class="snap-item">' +
       '<div class="snap-time">' + new Date(s.ts).toLocaleString() + '</div>' +
       '<div class="snap-count">' + s.games.length + ' games</div>' +
-      '<span class="snap-action" onclick="downloadSnap(' + i + ')">Download JSON</span>' +
-      '<span class="snap-action muted" onclick="deleteSnap(' + i + ')">Remove</span>' +
+      '<span class="snap-action" onclick="downloadSnap(' + i + ', \'' + type + '\')">Download JSON</span>' +
+      '<span class="snap-action muted" onclick="deleteSnap(' + i + ', \'' + type + '\')">Remove</span>' +
       '</div>';
   }
   el.innerHTML = html;
 }
 
-function downloadSnap(i) {
-  var s = snapshots[i];
+function downloadSnap(i, type = 'top') {
+  var snaps = type === 'top' ? snapshots : upComingSnapshots;
+  var s = snaps[i];
   var a = document.createElement('a');
   a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(s, null, 2));
-  a.download = 'roblox-snapshot-' + s.ts.replace(/[:.]/g, '-') + '.json';
+  a.download = 'roblox-' + type + '-snapshot-' + s.ts.replace(/[:.]/g, '-') + '.json';
   a.click();
 }
 
-function deleteSnap(i) { snapshots.splice(i, 1); renderSnapList(); renderMetrics(); }
+function deleteSnap(i, type = 'top') {
+  var snaps = type === 'top' ? snapshots : upComingSnapshots;
+  snaps.splice(i, 1);
+  renderSnapList();
+  if (type === 'top') renderMetrics(); else renderUpComingMetrics();
+}
 
 function clearSnapshots() {
-  if (snapshots.length && confirm('Clear all ' + snapshots.length + ' snapshots?')) {
-    snapshots = []; renderSnapList(); renderMetrics();
+  var type = document.getElementById('snap-type').value;
+  var snaps = type === 'top' ? snapshots : upComingSnapshots;
+  if (snaps.length && confirm('Clear all ' + snaps.length + ' ' + type + ' snapshots?')) {
+    if (type === 'top') snapshots = []; else upComingSnapshots = [];
+    renderSnapList();
+    if (type === 'top') renderMetrics(); else renderUpComingMetrics();
   }
 }
 
