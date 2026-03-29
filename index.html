@@ -174,7 +174,7 @@ function switchTab(id) {
 function fetchData() {
   setStatus('loading', 'Fetching...');
 
-  fetch('https://still-firefly-ae3d.1-ryanshore.workers.dev/')
+  return fetch('https://still-firefly-ae3d.1-ryanshore.workers.dev/')
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.json();
@@ -219,11 +219,25 @@ function fetchData() {
         'Live - updated ' + new Date().toLocaleTimeString()
       );
 
-      scheduleAuto();
+      return currentGames;
     })
     .catch(function(e) {
       setStatus('error', 'Error: ' + e.message);
       console.error(e);
+      throw e;
+    });
+}
+
+function initialLoad() {
+  fetchData()
+    .then(function() {
+      if (currentGames.length) {
+        takeSnapshot();
+      }
+      scheduleAuto();
+    })
+    .catch(function() {
+      // fetchData already handles status update and logging
     });
 }
 
@@ -353,9 +367,9 @@ function copyRaw() {
 
 function init() {
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fetchData);
+    document.addEventListener('DOMContentLoaded', initialLoad);
   } else {
-    fetchData();
+    initialLoad();
   }
 }
 
