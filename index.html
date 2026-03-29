@@ -80,11 +80,6 @@ tr:hover td { background: var(--bg2); }
 .snap-action { font-size: 12px; cursor: pointer; text-decoration: underline; color: var(--text); }
 .snap-action.muted { color: var(--text2); }
 .empty { padding: 40px; text-align: center; color: var(--text2); font-size: 13px; }
-.ai-wrap { display: flex; gap: 8px; margin-bottom: 14px; }
-.ai-wrap input { flex: 1; }
-.ai-box { border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; min-height: 160px; }
-.ai-response { font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
-.ai-hint { font-size: 12px; color: var(--text2); margin-top: 10px; }
 .json-wrap { background: var(--bg2); border-radius: var(--radius-lg); padding: 16px; overflow: auto; max-height: calc(100vh - 220px); }
 pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 12px; color: var(--text2); white-space: pre; }
 </style>
@@ -103,7 +98,6 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('viewer')">Live viewer</button>
     <button class="tab" onclick="switchTab('snapshots')">Snapshots</button>
-    <button class="tab" onclick="switchTab('trends')">AI trends</button>
     <button class="tab" onclick="switchTab('raw')">Raw JSON</button>
   </div>
 </div>
@@ -147,17 +141,6 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
     <div id="snap-empty" class="empty">No snapshots yet — fetch data and click "Take snapshot".</div>
   </div>
 
-  <div id="panel-trends" class="panel">
-    <div class="ai-wrap">
-      <input type="text" id="ai-input" placeholder="Ask about trends, risers, genre shifts..." onkeydown="if(event.key==='Enter')runAI()">
-      <button class="btn primary" onclick="runAI()">Analyze</button>
-    </div>
-    <div class="ai-box">
-      <div class="ai-response" id="ai-response">Load a few snapshots then ask things like "Which games are rising fast?", "What genres are trending?", or "Summarize rank changes since my first snapshot."</div>
-    </div>
-    <div class="ai-hint" id="ai-hint"></div>
-  </div>
-
   <div id="panel-raw" class="panel">
     <div class="toolbar">
       <button class="btn" onclick="copyRaw()">Copy JSON</button>
@@ -175,7 +158,7 @@ var countdownTimer = null;
 var nextSnapAt = null;
 
 function switchTab(id) {
-  var ids = ['viewer', 'snapshots', 'trends', 'raw'];
+  var ids = ['viewer', 'snapshots', 'raw'];
   document.querySelectorAll('.tab').forEach(function(t, i) {
     t.classList.toggle('active', ids[i] === id);
   });
@@ -358,54 +341,6 @@ function updateCountdown() {
   el.textContent = mins > 0 ? 'Auto-snapshot in ' + mins + 'm' : '';
 }
 
-function runAI() {
-  var q = document.getElementById('ai-input').value.trim();
-  if (!q) return;
-  var respEl = document.getElementById('ai-response');
-  var hintEl = document.getElementById('ai-hint');
-  if (!currentGames.length) { respEl.textContent = 'Fetch data first.'; return; }
-  respEl.textContent = 'Analyzing...';
-  hintEl.textContent = '';
-
-  var snapshotLines = [];
-  for (var si = Math.max(0, snapshots.length - 10); si < snapshots.length; si++) {
-    var s = snapshots[si];
-    var top5 = s.games.slice(0, 5).map(function(g) {
-      return g.name + ' (' + g.playerCount.toLocaleString() + ' players, ' + g.score + '% approval)';
-    }).join(', ');
-    snapshotLines.push('Snapshot ' + (si + 1) + ' [' + new Date(s.ts).toLocaleString() + ']: ' + s.games.length + ' games. Top 5: ' + top5);
-  }
-
-  var currentLines = [];
-  for (var ci = 0; ci < Math.min(20, currentGames.length); ci++) {
-    var g = currentGames[ci];
-    currentLines.push((ci + 1) + '. ' + g.name + ' - ' + g.playerCount.toLocaleString() + ' players, ' + approvalScore(g) + '% approval');
-  }
-
-  var userContent = 'Current top 20:\n' + currentLines.join('\n') + '\n\n' +
-    (snapshots.length ? 'Snapshot history (last ' + Math.min(snapshots.length, 10) + '):\n' + snapshotLines.join('\n') : 'No snapshots yet.') +
-    '\n\nQuestion: ' + q;
-
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: 'You are a Roblox game trends analyst. The user tracks the top ~98 games on Roblox by concurrent players. Answer questions about trends, risers, fallers, genre shifts, and player behavior. Be concise and specific. Use numbers. Highlight notable changes.',
-      messages: [{ role: 'user', content: userContent }]
-    })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    var text = (data.content || []).map(function(b) { return b.text || ''; }).join('');
-    respEl.textContent = text || 'No response.';
-    hintEl.textContent = snapshots.length < 3 ? 'Tip: Take more snapshots over time for richer trend analysis.' : 'Analyzing across ' + snapshots.length + ' snapshots.';
-  })
-  .catch(function(e) {
-    respEl.textContent = 'AI error: ' + e.message;
-  });
-}
 
 function copyRaw() {
   navigator.clipboard.writeText(document.getElementById('json-raw').textContent).then(function() { alert('Copied!'); });
