@@ -176,8 +176,8 @@ function fetchData() {
   fetch('https://still-firefly-ae3d.1-ryanshore.workers.dev/')
     .then(function(r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
       console.log("fetched")
+      return r.json();
     })
     .then(function(data) {
 
