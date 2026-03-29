@@ -61,9 +61,10 @@ input[type=text] { flex: 1; min-width: 180px; }
 .metric-value { font-size: 24px; font-weight: 600; }
 .metric-value.sm { font-size: 14px; padding-top: 5px; }
 .table-wrap { border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: auto; max-height: calc(100vh - 320px); }
-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto; }
 th { text-align: left; padding: 9px 12px; font-weight: 500; color: var(--text2); background: var(--bg2); border-bottom: 0.5px solid var(--border); font-size: 12px; position: sticky; top: 0; }
-td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+th:nth-child(2), td:nth-child(2) { min-width: 160px; }
+td { padding: 8px 12px; border-bottom: 0.5px solid var(--border); vertical-align: middle; overflow: visible; text-overflow: clip; white-space: nowrap; }
 td:nth-child(2) { white-space: normal; word-break: break-word; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg2); }
