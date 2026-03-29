@@ -346,7 +346,7 @@ function copyRaw() {
   navigator.clipboard.writeText(document.getElementById('json-raw').textContent).then(function() { alert('Copied!'); });
 }
 
-fetchData();
+window.addEventListener("load", fetchData);
 </script>
 </body>
 </html>
