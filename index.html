@@ -98,8 +98,8 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
     <span class="countdown" id="countdown"></span>
   </div>
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('viewer')">Live viewer</button>
-    <button class="tab" onclick="switchTab('upcoming')">Up and Coming</button>
+    <button class="tab active" onclick="switchTab('viewer')">Top Games</button>
+    <button class="tab" onclick="switchTab('upcoming')">Up and Coming Games</button>
     <button class="tab" onclick="switchTab('snapshots')">Snapshots</button>
     <button class="tab" onclick="switchTab('raw')">Raw JSON</button>
   </div>
@@ -456,7 +456,6 @@ function takeUpComingSnapshot() {
   upComingSnapshots.push(snap);
   renderUpComingMetrics();
   renderSnapList();
-  switchTab('snapshots');
   if (autoDownloadEnabled) {
     downloadSnap(upComingSnapshots.length - 1, 'upcoming');
   }
