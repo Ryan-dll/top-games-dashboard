@@ -524,7 +524,9 @@ function scheduleAuto() {
   countdownTimer = setInterval(updateCountdown, 15000);
   autoTimer = setInterval(function() {
     fetchData();
+    fetchUpComing();
     setTimeout(takeSnapshot, 3000);
+    setTimeout(takeUpComingSnapshot, 3000);
   }, 14400000);
 }
 
