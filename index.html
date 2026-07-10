@@ -102,6 +102,7 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('viewer')">Top Games</button>
     <button class="tab" onclick="switchTab('upcoming')">Up and Coming Games</button>
+    <button class="tab" onclick="switchTab('trending')">Top Trending</button>
     <button class="tab" onclick="switchTab('snapshots')">Snapshots</button>
     <button class="tab" onclick="switchTab('raw')">Raw JSON</button>
   </div>
@@ -163,11 +164,39 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
     </div>
   </div>
 
+  <div id="panel-trending" class="panel">
+    <div class="toolbar">
+      <input type="text" id="trending-search" placeholder="Search games..." oninput="renderTrendingTable()">
+      <select id="trending-sort-col" onchange="renderTrendingTable()">
+        <option value="playerCount">Players (desc)</option>
+        <option value="score">Approval %</option>
+        <option value="name">Name A-Z</option>
+        <option value="totalUpVotes">Total upvotes</option>
+      </select>
+      <button class="btn primary" onclick="fetchTrending()">Refresh</button>
+      <button class="btn" onclick="takeTrendingSnapshot()">Take snapshot</button>
+    </div>
+    <div class="metrics" id="trending-metrics"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:42px">#</th>
+          <th>Game</th>
+          <th style="width:210px">Players</th>
+          <th style="width:90px">Approval</th>
+          <th style="width:90px">Age</th>
+        </tr></thead>
+        <tbody id="trending-game-table"><tr><td colspan="5" class="empty">Fetching data...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
   <div id="panel-snapshots" class="panel">
     <div class="toolbar">
       <select id="snap-type" onchange="renderSnapList()">
         <option value="top">Top Games</option>
         <option value="upcoming">Up and Coming</option>
+        <option value="trending">Top Trending</option>
       </select>
       <button class="btn primary" onclick="takeSnapshot()">Snapshot now</button>
       <button class="btn" onclick="clearSnapshots()">Clear all</button>
@@ -193,13 +222,15 @@ var currentGames = [];
 var snapshots = [];
 var upComingGames = [];
 var upComingSnapshots = [];
+var trendingGames = [];
+var trendingSnapshots = [];
 var autoTimer = null;
 var countdownTimer = null;
 var nextSnapAt = null;
 var autoDownloadEnabled = false;
 
 function switchTab(id) {
-  var ids = ['viewer', 'upcoming', 'snapshots', 'raw'];
+  var ids = ['viewer', 'upcoming', 'trending', 'snapshots', 'raw'];
   document.querySelectorAll('.tab').forEach(function(t, i) {
     t.classList.toggle('active', ids[i] === id);
   });
@@ -270,19 +301,19 @@ function fetchData() {
 function initialLoad() {
   fetchData()
     .then(function() {
-      if (currentGames.length) {
-        takeSnapshot();
-      }
+      if (currentGames.length) takeSnapshot();
       return fetchUpComing();
     })
     .then(function() {
-      if (upComingGames.length) {
-        takeUpComingSnapshot();
-      }
+      if (upComingGames.length) takeUpComingSnapshot();
+      return fetchTrending();
+    })
+    .then(function() {
+      if (trendingGames.length) takeTrendingSnapshot();
       scheduleAuto();
     })
     .catch(function() {
-      // fetchData or fetchUpComing already handles status update and logging
+      // each fetch already handles its own status update and logging
     });
 }
 
@@ -471,7 +502,7 @@ function takeUpComingSnapshot() {
 
 function renderSnapList() {
   var type = document.getElementById('snap-type').value;
-  var snaps = type === 'top' ? snapshots : upComingSnapshots;
+  var snaps = type === 'top' ? snapshots : type === 'upcoming' ? upComingSnapshots : trendingSnapshots;
   var el = document.getElementById('snap-list');
   var empty = document.getElementById('snap-empty');
   if (!snaps.length) { el.innerHTML = ''; empty.style.display = ''; return; }
@@ -490,8 +521,9 @@ function renderSnapList() {
   el.innerHTML = html;
 }
 
-function downloadSnap(i, type = 'top') {
-  var snaps = type === 'top' ? snapshots : upComingSnapshots;
+function downloadSnap(i, type) {
+  type = type || 'top';
+  var snaps = type === 'top' ? snapshots : type === 'upcoming' ? upComingSnapshots : trendingSnapshots;
   var s = snaps[i];
   var a = document.createElement('a');
   a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(s, null, 2));
@@ -499,20 +531,122 @@ function downloadSnap(i, type = 'top') {
   a.click();
 }
 
-function deleteSnap(i, type = 'top') {
-  var snaps = type === 'top' ? snapshots : upComingSnapshots;
+function deleteSnap(i, type) {
+  type = type || 'top';
+  var snaps = type === 'top' ? snapshots : type === 'upcoming' ? upComingSnapshots : trendingSnapshots;
   snaps.splice(i, 1);
   renderSnapList();
-  if (type === 'top') renderMetrics(); else renderUpComingMetrics();
+  if (type === 'top') renderMetrics();
+  else if (type === 'upcoming') renderUpComingMetrics();
+  else renderTrendingMetrics();
 }
 
 function clearSnapshots() {
   var type = document.getElementById('snap-type').value;
-  var snaps = type === 'top' ? snapshots : upComingSnapshots;
+  var snaps = type === 'top' ? snapshots : type === 'upcoming' ? upComingSnapshots : trendingSnapshots;
   if (snaps.length && confirm('Clear all ' + snaps.length + ' ' + type + ' snapshots?')) {
-    if (type === 'top') snapshots = []; else upComingSnapshots = [];
+    if (type === 'top') snapshots = [];
+    else if (type === 'upcoming') upComingSnapshots = [];
+    else trendingSnapshots = [];
     renderSnapList();
-    if (type === 'top') renderMetrics(); else renderUpComingMetrics();
+    if (type === 'top') renderMetrics();
+    else if (type === 'upcoming') renderUpComingMetrics();
+    else renderTrendingMetrics();
+  }
+}
+
+function fetchTrending() {
+  setStatus('loading', 'Fetching...');
+  return fetch('https://top-trending.1-ryanshore.workers.dev/')
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      var items =
+        (data && data.games && Array.isArray(data.games) && data.games) ||
+        (data && Array.isArray(data.items) && data.items) ||
+        (Array.isArray(data) && data) ||
+        [];
+      trendingGames = items.map(function(g) {
+        return {
+          universeId: g.universeId,
+          name: g.name || g.title || 'Unknown',
+          playerCount: g.playerCount || g.concurrentPlayers || 0,
+          totalUpVotes: g.totalUpVotes || g.upVotes || 0,
+          totalDownVotes: g.totalDownVotes || g.downVotes || 0,
+          ageRecommendationDisplayName: g.ageRecommendationDisplayName || g.ageRecommendation || ''
+        };
+      });
+      if (!trendingGames.length) throw new Error('No games in response');
+      renderTrendingMetrics();
+      renderTrendingTable();
+      setStatus('live', 'Live - updated ' + new Date().toLocaleTimeString());
+      return trendingGames;
+    })
+    .catch(function(e) {
+      setStatus('error', 'Error: ' + e.message);
+      console.error(e);
+      throw e;
+    });
+}
+
+function renderTrendingMetrics() {
+  var total = trendingGames.reduce(function(s, g) { return s + g.playerCount; }, 0);
+  var avg = Math.round(trendingGames.reduce(function(s, g) { return s + approvalScore(g); }, 0) / trendingGames.length);
+  var top = trendingGames[0];
+  var topName = top ? top.name.replace(/[^\x20-\x7E]/g, '').trim().slice(0, 22) || top.name.slice(0, 22) : '-';
+  document.getElementById('trending-metrics').innerHTML =
+    '<div class="metric"><div class="metric-label">Games tracked</div><div class="metric-value">' + trendingGames.length + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Total players</div><div class="metric-value">' + (total / 1e6).toFixed(2) + 'M</div></div>' +
+    '<div class="metric"><div class="metric-label">Avg approval</div><div class="metric-value">' + avg + '%</div></div>' +
+    '<div class="metric"><div class="metric-label">Snapshots saved</div><div class="metric-value">' + trendingSnapshots.length + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Top game</div><div class="metric-value sm">' + topName + '</div></div>';
+}
+
+function renderTrendingTable() {
+  var q = document.getElementById('trending-search').value.toLowerCase();
+  var col = document.getElementById('trending-sort-col').value;
+  var games = trendingGames.filter(function(g) { return g.name.toLowerCase().indexOf(q) !== -1; });
+  if (col === 'playerCount') games = games.slice().sort(function(a, b) { return b.playerCount - a.playerCount; });
+  else if (col === 'score') games = games.slice().sort(function(a, b) { return approvalScore(b) - approvalScore(a); });
+  else if (col === 'name') games = games.slice().sort(function(a, b) { return a.name.localeCompare(b.name); });
+  else if (col === 'totalUpVotes') games = games.slice().sort(function(a, b) { return b.totalUpVotes - a.totalUpVotes; });
+  var tbody = document.getElementById('trending-game-table');
+  if (!games.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No games found.</td></tr>'; return; }
+  var minP = Math.min.apply(null, trendingGames.map(function(g) { return g.playerCount; }));
+  var maxP = Math.max.apply(null, trendingGames.map(function(g) { return g.playerCount; }));
+  var rows = '';
+  for (var i = 0; i < games.length; i++) {
+    var g = games[i];
+    var sc = approvalScore(g);
+    var cls = sc >= 85 ? 'score-hi' : sc >= 65 ? 'score-mid' : 'score-lo';
+    var ratio = maxP > minP ? (g.playerCount - minP) / (maxP - minP) : 0;
+    var hue = ratio * 120;
+    var age = (g.ageRecommendationDisplayName || '').replace('Maturity: ', '');
+    rows += '<tr>' +
+      '<td class="rank">' + (i + 1) + '</td>' +
+      '<td title="' + g.name + '">' + g.name + '</td>' +
+      '<td><div class="bar-wrap"><div class="bar" style="width:10px;background-color:hsl(' + hue + ',100%,50%);"></div><span class="pcount">' + g.playerCount.toLocaleString() + '</span></div></td>' +
+      '<td><span class="badge ' + cls + '">' + sc + '%</span></td>' +
+      '<td><span class="age-badge">' + age + '</span></td>' +
+      '</tr>';
+  }
+  tbody.innerHTML = rows;
+}
+
+function takeTrendingSnapshot() {
+  if (!trendingGames.length) { alert('Fetch data first.'); return; }
+  var snap = { ts: new Date().toISOString(), games: [], type: 'trending' };
+  for (var i = 0; i < trendingGames.length; i++) {
+    var g = trendingGames[i];
+    snap.games.push({ universeId: g.universeId, name: g.name, playerCount: g.playerCount, score: approvalScore(g), upVotes: g.totalUpVotes, downVotes: g.totalDownVotes });
+  }
+  trendingSnapshots.push(snap);
+  renderTrendingMetrics();
+  renderSnapList();
+  if (autoDownloadEnabled) {
+    downloadSnap(trendingSnapshots.length - 1, 'trending');
   }
 }
 
@@ -525,8 +659,10 @@ function scheduleAuto() {
   autoTimer = setInterval(function() {
     fetchData();
     fetchUpComing();
+    fetchTrending();
     setTimeout(takeSnapshot, 3000);
     setTimeout(takeUpComingSnapshot, 3000);
+    setTimeout(takeTrendingSnapshot, 3000);
   }, 14400000);
 }
 
