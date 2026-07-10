@@ -120,7 +120,6 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
         <option value="totalUpVotes">Total upvotes</option>
       </select>
       <button class="btn primary" onclick="fetchData()">Refresh</button>
-      <button class="btn" onclick="takeSnapshot()">Take snapshot</button>
     </div>
     <div class="metrics" id="metrics"></div>
     <div class="table-wrap">
@@ -147,7 +146,6 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
         <option value="totalUpVotes">Total upvotes</option>
       </select>
       <button class="btn primary" onclick="fetchUpComing()">Refresh</button>
-      <button class="btn" onclick="takeUpComingSnapshot()">Take snapshot</button>
     </div>
     <div class="metrics" id="upcoming-metrics"></div>
     <div class="table-wrap">
@@ -174,7 +172,6 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
         <option value="totalUpVotes">Total upvotes</option>
       </select>
       <button class="btn primary" onclick="fetchTrending()">Refresh</button>
-      <button class="btn" onclick="takeTrendingSnapshot()">Take snapshot</button>
     </div>
     <div class="metrics" id="trending-metrics"></div>
     <div class="table-wrap">
@@ -193,11 +190,6 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
 
   <div id="panel-snapshots" class="panel">
     <div class="toolbar">
-      <select id="snap-type" onchange="renderSnapList()">
-        <option value="top">Top Games</option>
-        <option value="upcoming">Up and Coming</option>
-        <option value="trending">Top Trending</option>
-      </select>
       <button class="btn primary" onclick="takeSnapshot()">Snapshot now</button>
       <button class="btn" onclick="clearSnapshots()">Clear all</button>
       <input type="checkbox" id="auto-download" onchange="toggleAutoDownload()">
@@ -205,7 +197,7 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
       <span style="font-size:12px;color:var(--text2);">(Auto-snapshots every 4 hours while this tab is open)</span>
     </div>
     <div class="snap-list" id="snap-list"></div>
-    <div id="snap-empty" class="empty">No snapshots yet — fetch data and click "Take snapshot".</div>
+    <div id="snap-empty" class="empty">No snapshots yet — fetch data and click "Snapshot now".</div>
   </div>
 
   <div id="panel-raw" class="panel">
@@ -219,11 +211,9 @@ pre { font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace; font-size: 
 
 <script>
 var currentGames = [];
-var snapshots = [];
 var upComingGames = [];
-var upComingSnapshots = [];
 var trendingGames = [];
-var trendingSnapshots = [];
+var snapshots = [];
 var autoTimer = null;
 var countdownTimer = null;
 var nextSnapAt = null;
@@ -299,22 +289,12 @@ function fetchData() {
 }
 
 function initialLoad() {
-  fetchData()
+  Promise.all([fetchData(), fetchUpComing(), fetchTrending()])
     .then(function() {
-      if (currentGames.length) takeSnapshot();
-      return fetchUpComing();
-    })
-    .then(function() {
-      if (upComingGames.length) takeUpComingSnapshot();
-      return fetchTrending();
-    })
-    .then(function() {
-      if (trendingGames.length) takeTrendingSnapshot();
+      takeSnapshot();
       scheduleAuto();
     })
-    .catch(function() {
-      // each fetch already handles its own status update and logging
-    });
+    .catch(function() {});
 }
 
 function fetchUpComing() {
@@ -404,7 +384,7 @@ function renderUpComingMetrics() {
     '<div class="metric"><div class="metric-label">Games tracked</div><div class="metric-value">' + upComingGames.length + '</div></div>' +
     '<div class="metric"><div class="metric-label">Total players</div><div class="metric-value">' + (total / 1e6).toFixed(2) + 'M</div></div>' +
     '<div class="metric"><div class="metric-label">Avg approval</div><div class="metric-value">' + avg + '%</div></div>' +
-    '<div class="metric"><div class="metric-label">Snapshots saved</div><div class="metric-value">' + upComingSnapshots.length + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Snapshots saved</div><div class="metric-value">' + snapshots.length + '</div></div>' +
     '<div class="metric"><div class="metric-label">Top game</div><div class="metric-value sm">' + topName + '</div></div>';
 }
 
@@ -471,87 +451,77 @@ function renderUpComingTable() {
 }
 
 function takeSnapshot() {
-  if (!currentGames.length) { alert('Fetch data first.'); return; }
-  var snap = { ts: new Date().toISOString(), games: [], type: 'top' };
-  for (var i = 0; i < currentGames.length; i++) {
-    var g = currentGames[i];
-    snap.games.push({ universeId: g.universeId, name: g.name, playerCount: g.playerCount, score: approvalScore(g), upVotes: g.totalUpVotes, downVotes: g.totalDownVotes });
+  if (!currentGames.length && !upComingGames.length && !trendingGames.length) {
+    alert('Fetch data first.');
+    return;
   }
+  function mapGames(list) {
+    return list.map(function(g) {
+      return { universeId: g.universeId, name: g.name, playerCount: g.playerCount, score: approvalScore(g), upVotes: g.totalUpVotes, downVotes: g.totalDownVotes };
+    });
+  }
+  var snap = {
+    ts: new Date().toISOString(),
+    'Top Concurrent Player Games': mapGames(currentGames),
+    'Top Up and Coming Games': mapGames(upComingGames),
+    'Top Trending Games': mapGames(trendingGames)
+  };
   snapshots.push(snap);
   renderMetrics();
-  renderSnapList();
-  if (autoDownloadEnabled) {
-    downloadSnap(snapshots.length - 1, 'top');
-  }
-}
-
-function takeUpComingSnapshot() {
-  if (!upComingGames.length) { alert('Fetch data first.'); return; }
-  var snap = { ts: new Date().toISOString(), games: [], type: 'upcoming' };
-  for (var i = 0; i < upComingGames.length; i++) {
-    var g = upComingGames[i];
-    snap.games.push({ universeId: g.universeId, name: g.name, playerCount: g.playerCount, score: approvalScore(g), upVotes: g.totalUpVotes, downVotes: g.totalDownVotes });
-  }
-  upComingSnapshots.push(snap);
   renderUpComingMetrics();
+  renderTrendingMetrics();
   renderSnapList();
   if (autoDownloadEnabled) {
-    downloadSnap(upComingSnapshots.length - 1, 'upcoming');
+    downloadSnap(snapshots.length - 1);
   }
 }
 
 function renderSnapList() {
-  var type = document.getElementById('snap-type').value;
-  var snaps = type === 'top' ? snapshots : type === 'upcoming' ? upComingSnapshots : trendingSnapshots;
   var el = document.getElementById('snap-list');
   var empty = document.getElementById('snap-empty');
-  if (!snaps.length) { el.innerHTML = ''; empty.style.display = ''; return; }
+  if (!snapshots.length) { el.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   var html = '';
-  for (var ri = 0; ri < snaps.length; ri++) {
-    var i = snaps.length - 1 - ri;
-    var s = snaps[i];
+  for (var ri = 0; ri < snapshots.length; ri++) {
+    var i = snapshots.length - 1 - ri;
+    var s = snapshots[i];
+    var total =
+      (s['Top Concurrent Player Games'] ? s['Top Concurrent Player Games'].length : 0) +
+      (s['Top Up and Coming Games'] ? s['Top Up and Coming Games'].length : 0) +
+      (s['Top Trending Games'] ? s['Top Trending Games'].length : 0);
     html += '<div class="snap-item">' +
       '<div class="snap-time">' + new Date(s.ts).toLocaleString() + '</div>' +
-      '<div class="snap-count">' + s.games.length + ' games</div>' +
-      '<span class="snap-action" onclick="downloadSnap(' + i + ', \'' + type + '\')">Download JSON</span>' +
-      '<span class="snap-action muted" onclick="deleteSnap(' + i + ', \'' + type + '\')">Remove</span>' +
+      '<div class="snap-count">' + total + ' games across 3 categories</div>' +
+      '<span class="snap-action" onclick="downloadSnap(' + i + ')">Download JSON</span>' +
+      '<span class="snap-action muted" onclick="deleteSnap(' + i + ')">Remove</span>' +
       '</div>';
   }
   el.innerHTML = html;
 }
 
-function downloadSnap(i, type) {
-  type = type || 'top';
-  var snaps = type === 'top' ? snapshots : type === 'upcoming' ? upComingSnapshots : trendingSnapshots;
-  var s = snaps[i];
+function downloadSnap(i) {
+  var s = snapshots[i];
   var a = document.createElement('a');
   a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(s, null, 2));
-  a.download = 'roblox-' + type + '-snapshot-' + s.ts.replace(/[:.]/g, '-') + '.json';
+  a.download = 'roblox-snapshot-' + s.ts.replace(/[:.]/g, '-') + '.json';
   a.click();
 }
 
-function deleteSnap(i, type) {
-  type = type || 'top';
-  var snaps = type === 'top' ? snapshots : type === 'upcoming' ? upComingSnapshots : trendingSnapshots;
-  snaps.splice(i, 1);
+function deleteSnap(i) {
+  snapshots.splice(i, 1);
   renderSnapList();
-  if (type === 'top') renderMetrics();
-  else if (type === 'upcoming') renderUpComingMetrics();
-  else renderTrendingMetrics();
+  renderMetrics();
+  renderUpComingMetrics();
+  renderTrendingMetrics();
 }
 
 function clearSnapshots() {
-  var type = document.getElementById('snap-type').value;
-  var snaps = type === 'top' ? snapshots : type === 'upcoming' ? upComingSnapshots : trendingSnapshots;
-  if (snaps.length && confirm('Clear all ' + snaps.length + ' ' + type + ' snapshots?')) {
-    if (type === 'top') snapshots = [];
-    else if (type === 'upcoming') upComingSnapshots = [];
-    else trendingSnapshots = [];
+  if (snapshots.length && confirm('Clear all ' + snapshots.length + ' snapshots?')) {
+    snapshots = [];
     renderSnapList();
-    if (type === 'top') renderMetrics();
-    else if (type === 'upcoming') renderUpComingMetrics();
-    else renderTrendingMetrics();
+    renderMetrics();
+    renderUpComingMetrics();
+    renderTrendingMetrics();
   }
 }
 
@@ -600,7 +570,7 @@ function renderTrendingMetrics() {
     '<div class="metric"><div class="metric-label">Games tracked</div><div class="metric-value">' + trendingGames.length + '</div></div>' +
     '<div class="metric"><div class="metric-label">Total players</div><div class="metric-value">' + (total / 1e6).toFixed(2) + 'M</div></div>' +
     '<div class="metric"><div class="metric-label">Avg approval</div><div class="metric-value">' + avg + '%</div></div>' +
-    '<div class="metric"><div class="metric-label">Snapshots saved</div><div class="metric-value">' + trendingSnapshots.length + '</div></div>' +
+    '<div class="metric"><div class="metric-label">Snapshots saved</div><div class="metric-value">' + snapshots.length + '</div></div>' +
     '<div class="metric"><div class="metric-label">Top game</div><div class="metric-value sm">' + topName + '</div></div>';
 }
 
@@ -636,18 +606,7 @@ function renderTrendingTable() {
 }
 
 function takeTrendingSnapshot() {
-  if (!trendingGames.length) { alert('Fetch data first.'); return; }
-  var snap = { ts: new Date().toISOString(), games: [], type: 'trending' };
-  for (var i = 0; i < trendingGames.length; i++) {
-    var g = trendingGames[i];
-    snap.games.push({ universeId: g.universeId, name: g.name, playerCount: g.playerCount, score: approvalScore(g), upVotes: g.totalUpVotes, downVotes: g.totalDownVotes });
-  }
-  trendingSnapshots.push(snap);
-  renderTrendingMetrics();
-  renderSnapList();
-  if (autoDownloadEnabled) {
-    downloadSnap(trendingSnapshots.length - 1, 'trending');
-  }
+  takeSnapshot();
 }
 
 function scheduleAuto() {
@@ -657,12 +616,9 @@ function scheduleAuto() {
   updateCountdown();
   countdownTimer = setInterval(updateCountdown, 15000);
   autoTimer = setInterval(function() {
-    fetchData();
-    fetchUpComing();
-    fetchTrending();
-    setTimeout(takeSnapshot, 3000);
-    setTimeout(takeUpComingSnapshot, 3000);
-    setTimeout(takeTrendingSnapshot, 3000);
+    Promise.all([fetchData(), fetchUpComing(), fetchTrending()])
+      .then(function() { takeSnapshot(); })
+      .catch(function() {});
   }, 14400000);
 }
 
