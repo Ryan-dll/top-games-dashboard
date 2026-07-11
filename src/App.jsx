@@ -98,15 +98,15 @@ export default function App() {
 
       <div className="main">
         <div className={`panel ${activeTab === 'viewer' ? 'active' : ''}`}>
-          <GamePanel games={topGames} snapshotCount={snapshots.length} onRefresh={fetchTop} />
+          <GamePanel games={topGames} onRefresh={fetchTop} />
         </div>
 
         <div className={`panel ${activeTab === 'upcoming' ? 'active' : ''}`}>
-          <GamePanel games={upcomingGames} snapshotCount={snapshots.length} onRefresh={fetchUpcoming} />
+          <GamePanel games={upcomingGames} onRefresh={fetchUpcoming} />
         </div>
 
         <div className={`panel ${activeTab === 'trending' ? 'active' : ''}`}>
-          <GamePanel games={trendingGames} snapshotCount={snapshots.length} onRefresh={fetchTrending} />
+          <GamePanel games={trendingGames} onRefresh={fetchTrending} />
         </div>
 
         <div className={`panel ${activeTab === 'snapshots' ? 'active' : ''}`}>

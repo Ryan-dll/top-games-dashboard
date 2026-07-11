@@ -10,7 +10,7 @@ const SORT_OPTIONS = [
   { value: 'genre', label: 'Genre A-Z' },
 ];
 
-export default function GamePanel({ games, snapshotCount, onRefresh }) {
+export default function GamePanel({ games, onRefresh }) {
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState('playerCount');
 
@@ -49,7 +49,7 @@ export default function GamePanel({ games, snapshotCount, onRefresh }) {
         </button>
       </div>
 
-      <Metrics games={games} snapshotCount={snapshotCount} />
+      <Metrics games={games} />
 
       <div className="table-wrap">
         <table>
