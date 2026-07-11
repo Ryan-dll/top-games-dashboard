@@ -3,9 +3,9 @@ import JSZip from 'jszip';
 import Header from './components/Header';
 import GamePanel from './components/GamePanel';
 import SnapshotsPanel from './components/SnapshotsPanel';
-import RawJsonPanel from './components/RawJsonPanel';
 import { useGameData } from './hooks/useGameData';
 import { useSnapshots } from './hooks/useSnapshots';
+import { approvalScore } from './utils/format';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -20,6 +20,17 @@ function snapshotFilename(s) {
   return 'roblox-snapshot-' + s.ts.replace(/[:.]/g, '-') + '.json';
 }
 
+function mapGamesForSnapshot(list) {
+  return list.map((g) => ({
+    universeId: g.universeId,
+    name: g.name,
+    playerCount: g.playerCount,
+    approvalRatingPercentage: approvalScore(g),
+    upVotes: g.totalUpVotes,
+    downVotes: g.totalDownVotes,
+  }));
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('viewer');
 
@@ -27,7 +38,6 @@ export default function App() {
     topGames,
     upcomingGames,
     trendingGames,
-    rawJson,
     status,
     fetchTop,
     fetchUpcoming,
@@ -68,6 +78,20 @@ export default function App() {
     downloadBlob(blob, 'roblox-snapshots-combined-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json');
   }, [snapshots]);
 
+  // Builds a snapshot from whatever's already loaded in memory - no network
+  // call, so it doesn't touch the Roblox API or Supabase, and won't appear
+  // in the snapshots list above (which only reflects the server-side cron).
+  const handleTakeLocalSnapshot = useCallback(() => {
+    const s = {
+      ts: new Date().toISOString(),
+      'Top Concurrent Player Games': mapGamesForSnapshot(topGames),
+      'Top Up and Coming Games': mapGamesForSnapshot(upcomingGames),
+      'Top Trending Games': mapGamesForSnapshot(trendingGames),
+    };
+    const blob = new Blob([JSON.stringify(s, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, 'roblox-snapshot-local-' + s.ts.replace(/[:.]/g, '-') + '.json');
+  }, [topGames, upcomingGames, trendingGames]);
+
   return (
     <>
       <Header activeTab={activeTab} onTabChange={setActiveTab} status={status} />
@@ -91,11 +115,8 @@ export default function App() {
             onDownload={handleDownload}
             onDownloadAll={handleDownloadAll}
             onDownloadCombined={handleDownloadCombined}
+            onTakeLocalSnapshot={handleTakeLocalSnapshot}
           />
-        </div>
-
-        <div className={`panel ${activeTab === 'raw' ? 'active' : ''}`}>
-          <RawJsonPanel rawJson={rawJson} />
         </div>
       </div>
     </>

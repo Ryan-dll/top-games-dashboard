@@ -7,6 +7,7 @@ const SORT_OPTIONS = [
   { value: 'score', label: 'Approval %' },
   { value: 'name', label: 'Name A-Z' },
   { value: 'totalUpVotes', label: 'Total upvotes' },
+  { value: 'genre', label: 'Genre A-Z' },
 ];
 
 export default function GamePanel({ games, snapshotCount, onRefresh }) {
@@ -20,6 +21,7 @@ export default function GamePanel({ games, snapshotCount, onRefresh }) {
     else if (sortCol === 'score') list.sort((a, b) => approvalScore(b) - approvalScore(a));
     else if (sortCol === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortCol === 'totalUpVotes') list.sort((a, b) => b.totalUpVotes - a.totalUpVotes);
+    else if (sortCol === 'genre') list.sort((a, b) => (a.genreL1 || '').localeCompare(b.genreL1 || ''));
     return list;
   }, [games, search, sortCol]);
 
@@ -58,12 +60,13 @@ export default function GamePanel({ games, snapshotCount, onRefresh }) {
               <th style={{ width: 210 }}>Players</th>
               <th style={{ width: 90 }}>Approval</th>
               <th style={{ width: 90 }}>Age</th>
+              <th style={{ width: 130 }}>Genre</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="empty">
+                <td colSpan={6} className="empty">
                   {games.length ? 'No games found.' : 'Fetching data...'}
                 </td>
               </tr>
@@ -90,6 +93,7 @@ export default function GamePanel({ games, snapshotCount, onRefresh }) {
                     <td>
                       <span className="age-badge">{age}</span>
                     </td>
+                    <td title={g.genreL1}>{g.genreL1 || '-'}</td>
                   </tr>
                 );
               })

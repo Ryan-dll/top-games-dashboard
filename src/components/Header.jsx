@@ -6,7 +6,6 @@ const TABS = [
   { id: 'upcoming', label: 'Up and Coming Games' },
   { id: 'trending', label: 'Top Trending' },
   { id: 'snapshots', label: 'Snapshots' },
-  { id: 'raw', label: 'Raw JSON' },
 ];
 
 function formatCountdown(ms) {

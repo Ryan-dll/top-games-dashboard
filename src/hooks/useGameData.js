@@ -5,16 +5,14 @@ export function useGameData() {
   const [topGames, setTopGames] = useState([]);
   const [upcomingGames, setUpcomingGames] = useState([]);
   const [trendingGames, setTrendingGames] = useState([]);
-  const [rawJson, setRawJson] = useState(null);
   const [status, setStatus] = useState({ state: 'connecting', message: 'Connecting...' });
 
   const wrap = useCallback((fetcher, setter) => {
     return async () => {
       setStatus({ state: 'loading', message: 'Fetching...' });
       try {
-        const { games, raw } = await fetcher();
+        const { games } = await fetcher();
         setter(games);
-        setRawJson(raw);
         setStatus({ state: 'live', message: 'Live - updated ' + new Date().toLocaleTimeString() });
         return games;
       } catch (e) {
@@ -37,7 +35,6 @@ export function useGameData() {
     topGames,
     upcomingGames,
     trendingGames,
-    rawJson,
     status,
     fetchTop,
     fetchUpcoming,

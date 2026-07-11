@@ -26,6 +26,7 @@ function normalizeGames(data) {
     totalDownVotes: g.totalDownVotes || g.downVotes || 0,
     ageRecommendationDisplayName:
       g.ageRecommendationDisplayName || g.ageRecommendation || '',
+    genreL1: g.genreL1 || '',
   }));
 }
 
