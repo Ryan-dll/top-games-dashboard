@@ -53,7 +53,7 @@ function mapGames(list) {
     universeId: g.universeId,
     name: g.name,
     playerCount: g.playerCount,
-    score: approvalScore(g),
+    approvalRatingPercentage: approvalScore(g),
     upVotes: g.totalUpVotes,
     downVotes: g.totalDownVotes,
   }));

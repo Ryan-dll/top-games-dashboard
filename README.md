@@ -31,7 +31,7 @@ create table snapshots (
 
 ```json
 {
-  "Top Concurrent Player Games": [{ "universeId": ..., "name": ..., "playerCount": ..., "score": ..., "upVotes": ..., "downVotes": ... }],
+  "Top Concurrent Player Games": [{ "universeId": ..., "name": ..., "playerCount": ..., "approvalRatingPercentage": ..., "upVotes": ..., "downVotes": ... }],
   "Top Up and Coming Games": [...],
   "Top Trending Games": [...]
 }
