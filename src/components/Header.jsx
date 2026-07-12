@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import { getNextRunTime } from '../lib/schedule';
 
-const TABS = [
-  { id: 'viewer', label: 'Top Games' },
-  { id: 'upcoming', label: 'Up and Coming Games' },
-  { id: 'trending', label: 'Top Trending' },
-  { id: 'snapshots', label: 'Snapshots' },
+export const TABS = [
+  { path: '/TopGames', label: 'Top Games' },
+  { path: '/UpAndComingGames', label: 'Up and Coming Games' },
+  { path: '/TopTrending', label: 'Top Trending' },
+  { path: '/Snapshots', label: 'Snapshots' },
 ];
 
 function formatCountdown(ms) {
@@ -16,7 +17,7 @@ function formatCountdown(ms) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export default function Header({ activeTab, onTabChange, status }) {
+export default function Header({ status }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
@@ -39,13 +40,9 @@ export default function Header({ activeTab, onTabChange, status }) {
       </div>
       <div className="tabs">
         {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={`tab ${activeTab === t.id ? 'active' : ''}`}
-            onClick={() => onTabChange(t.id)}
-          >
+          <NavLink key={t.path} to={t.path} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
             {t.label}
-          </button>
+          </NavLink>
         ))}
       </div>
     </div>

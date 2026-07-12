@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import JSZip from 'jszip';
 import Header from './components/Header';
 import GamePanel from './components/GamePanel';
@@ -32,8 +33,6 @@ function mapGamesForSnapshot(list) {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('viewer');
-
   const {
     topGames,
     upcomingGames,
@@ -104,30 +103,31 @@ export default function App() {
 
   return (
     <>
-      <Header activeTab={activeTab} onTabChange={setActiveTab} status={status} />
+      <Header status={status} />
 
       <div className="main">
-        <div className={`panel ${activeTab === 'viewer' ? 'active' : ''}`}>
-          <GamePanel games={topGames} onRefresh={fetchTop} />
-        </div>
-
-        <div className={`panel ${activeTab === 'upcoming' ? 'active' : ''}`}>
-          <GamePanel games={upcomingGames} onRefresh={fetchUpcoming} />
-        </div>
-
-        <div className={`panel ${activeTab === 'trending' ? 'active' : ''}`}>
-          <GamePanel games={trendingGames} onRefresh={fetchTrending} />
-        </div>
-
-        <div className={`panel ${activeTab === 'snapshots' ? 'active' : ''}`}>
-          <SnapshotsPanel
-            snapshots={snapshots}
-            onDownload={handleDownload}
-            onDownloadAll={handleDownloadAll}
-            onDownloadCombined={handleDownloadCombined}
-            onTakeLocalSnapshot={handleTakeLocalSnapshot}
+        <Routes>
+          <Route path="/" element={<Navigate to="/TopGames" replace />} />
+          <Route path="/TopGames" element={<GamePanel games={topGames} onRefresh={fetchTop} />} />
+          <Route
+            path="/UpAndComingGames"
+            element={<GamePanel games={upcomingGames} onRefresh={fetchUpcoming} />}
           />
-        </div>
+          <Route path="/TopTrending" element={<GamePanel games={trendingGames} onRefresh={fetchTrending} />} />
+          <Route
+            path="/Snapshots"
+            element={
+              <SnapshotsPanel
+                snapshots={snapshots}
+                onDownload={handleDownload}
+                onDownloadAll={handleDownloadAll}
+                onDownloadCombined={handleDownloadCombined}
+                onTakeLocalSnapshot={handleTakeLocalSnapshot}
+              />
+            }
+          />
+          <Route path="*" element={<Navigate to="/TopGames" replace />} />
+        </Routes>
       </div>
     </>
   );
