@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import CombineSnapshotsModal from './CombineSnapshotsModal';
+
 export default function SnapshotsPanel({
   snapshots,
   onDownload,
@@ -5,6 +8,8 @@ export default function SnapshotsPanel({
   onDownloadCombined,
   onTakeLocalSnapshot,
 }) {
+  const [combineOpen, setCombineOpen] = useState(false);
+
   return (
     <div>
       <div className="toolbar">
@@ -16,7 +21,7 @@ export default function SnapshotsPanel({
             <button className="btn" onClick={onDownloadAll}>
               Download All (.zip)
             </button>
-            <button className="btn" onClick={onDownloadCombined}>
+            <button className="btn" onClick={() => setCombineOpen(true)}>
               Download Combined JSON
             </button>
           </>
@@ -43,6 +48,14 @@ export default function SnapshotsPanel({
             );
           })}
         </div>
+      )}
+
+      {combineOpen && (
+        <CombineSnapshotsModal
+          snapshots={snapshots}
+          onConfirm={onDownloadCombined}
+          onClose={() => setCombineOpen(false)}
+        />
       )}
     </div>
   );

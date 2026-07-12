@@ -68,15 +68,25 @@ export default function App() {
     downloadBlob(blob, 'roblox-snapshots-' + new Date().toISOString().replace(/[:.]/g, '-') + '.zip');
   }, [snapshots]);
 
-  const handleDownloadCombined = useCallback(() => {
-    const combined = {};
-    snapshots.forEach((s) => {
-      const { id, ts, ...rest } = s;
-      combined[ts] = rest;
-    });
-    const blob = new Blob([JSON.stringify(combined, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, 'roblox-snapshots-combined-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json');
-  }, [snapshots]);
+  // snapshots is sorted most-recent-first, so a null/undefined count means
+  // "all of them" and a number means "the N most recent".
+  const handleDownloadCombined = useCallback(
+    (count) => {
+      const list = typeof count === 'number' ? snapshots.slice(0, count) : snapshots;
+      const combined = {};
+      list.forEach((s) => {
+        const { id, ts, ...rest } = s;
+        combined[ts] = rest;
+      });
+      const blob = new Blob([JSON.stringify(combined, null, 2)], { type: 'application/json' });
+      const label = typeof count === 'number' ? `last-${list.length}` : 'all';
+      downloadBlob(
+        blob,
+        `roblox-snapshots-combined-${label}-` + new Date().toISOString().replace(/[:.]/g, '-') + '.json'
+      );
+    },
+    [snapshots]
+  );
 
   // Builds a snapshot from whatever's already loaded in memory - no network
   // call, so it doesn't touch the Roblox API or Supabase, and won't appear
