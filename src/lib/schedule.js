@@ -1,9 +1,9 @@
-// Computes the next scheduled snapshot time: 10:00am or 8:00pm America/New_York,
-// whichever comes next. Written without a date library, using Intl to stay
-// correct across the EST/EDT boundary.
+// Computes the next scheduled snapshot time: midnight, 10:00am, 1:00pm, or
+// 8:00pm America/New_York, whichever comes next. Written without a date
+// library, using Intl to stay correct across the EST/EDT boundary.
 
 const TIMEZONE = 'America/New_York';
-const RUN_HOURS = [10, 20]; // 10am, 8pm
+const RUN_HOURS = [0, 10, 13, 20]; // midnight, 10am, 1pm, 8pm
 
 function easternHourOf(date) {
   const fmt = new Intl.DateTimeFormat('en-US', {

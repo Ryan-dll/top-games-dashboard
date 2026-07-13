@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { SNAPSHOTS_PER_DAY, selectSnapshotsForCombine } from '../lib/combineSnapshots';
 
 const DAY_PRESETS = [1, 7, 14, 30];
-const SNAPSHOTS_PER_DAY = 2;
 
 export default function CombineSnapshotsModal({ snapshots, onConfirm, onClose }) {
   const maxDays = Math.max(1, Math.ceil(snapshots.length / SNAPSHOTS_PER_DAY));
   const [mode, setMode] = useState('days');
   const [days, setDays] = useState(Math.min(7, maxDays));
+  const [detail, setDetail] = useState('verbose');
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -16,22 +17,25 @@ export default function CombineSnapshotsModal({ snapshots, onConfirm, onClose })
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  // A "day" is 2 snapshots, but the newest/oldest day in the list can be a
-  // lone snapshot (e.g. today's evening run hasn't happened yet, or the
-  // very first day tracked only got one), so this is naturally clamped
-  // rather than forced to land on exact day boundaries.
-  const count = mode === 'all' ? snapshots.length : Math.min(days * SNAPSHOTS_PER_DAY, snapshots.length);
+  const selectedDays = mode === 'all' ? null : days;
+
+  // Computed with the same helper used for the actual download, so the
+  // preview here can never drift from what gets written to disk.
+  const finalList = useMemo(
+    () => selectSnapshotsForCombine(snapshots, { days: selectedDays, detail }),
+    [snapshots, selectedDays, detail]
+  );
 
   const rangeText = useMemo(() => {
-    if (count === 0) return null;
-    const newest = snapshots[0];
-    const oldest = snapshots[count - 1];
+    if (finalList.length === 0) return null;
+    const newest = finalList[0];
+    const oldest = finalList[finalList.length - 1];
     const fmt = (ts) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     return oldest.ts === newest.ts ? fmt(newest.ts) : `${fmt(oldest.ts)} – ${fmt(newest.ts)}`;
-  }, [snapshots, count]);
+  }, [finalList]);
 
   const handleConfirm = () => {
-    onConfirm(mode === 'all' ? null : count);
+    onConfirm(selectedDays, detail);
     onClose();
   };
 
@@ -72,13 +76,30 @@ export default function CombineSnapshotsModal({ snapshots, onConfirm, onClose })
                 onChange={(e) => setDays(Math.max(1, Number(e.target.value) || 1))}
                 onKeyDown={(e) => e.key === 'Enter' && handleConfirm()}
               />
-              <span className="modal-help">days (2 snapshots/day)</span>
+              <span className="modal-help">days ({SNAPSHOTS_PER_DAY} snapshots/day)</span>
             </div>
           </>
         )}
 
+        <div className="seg-row">
+          <button className={`seg-btn ${detail === 'verbose' ? 'active' : ''}`} onClick={() => setDetail('verbose')}>
+            Verbose
+          </button>
+          <button
+            className={`seg-btn ${detail === 'succinct' ? 'active' : ''}`}
+            onClick={() => setDetail('succinct')}
+          >
+            Succinct
+          </button>
+        </div>
+        <div className="modal-note">
+          {detail === 'verbose'
+            ? 'Includes every snapshot in range.'
+            : 'Just the ~8pm ET snapshot for each day, so daily trends stay easy to compare.'}
+        </div>
+
         <div className="modal-summary">
-          {count} snapshot{count === 1 ? '' : 's'}
+          {finalList.length} snapshot{finalList.length === 1 ? '' : 's'}
           {rangeText ? ` · ${rangeText}` : ''}
         </div>
 
@@ -86,7 +107,7 @@ export default function CombineSnapshotsModal({ snapshots, onConfirm, onClose })
           <button className="btn" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn primary" onClick={handleConfirm} disabled={count === 0}>
+          <button className="btn primary" onClick={handleConfirm} disabled={finalList.length === 0}>
             Download
           </button>
         </div>

@@ -7,6 +7,7 @@ import SnapshotsPanel from './components/SnapshotsPanel';
 import { useGameData } from './hooks/useGameData';
 import { useSnapshots } from './hooks/useSnapshots';
 import { approvalScore } from './utils/format';
+import { selectSnapshotsForCombine } from './lib/combineSnapshots';
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -67,21 +68,22 @@ export default function App() {
     downloadBlob(blob, 'roblox-snapshots-' + new Date().toISOString().replace(/[:.]/g, '-') + '.zip');
   }, [snapshots]);
 
-  // snapshots is sorted most-recent-first, so a null/undefined count means
-  // "all of them" and a number means "the N most recent".
   const handleDownloadCombined = useCallback(
-    (count) => {
-      const list = typeof count === 'number' ? snapshots.slice(0, count) : snapshots;
+    (days, detail) => {
+      const list = selectSnapshotsForCombine(snapshots, { days, detail });
       const combined = {};
       list.forEach((s) => {
         const { id, ts, ...rest } = s;
         combined[ts] = rest;
       });
       const blob = new Blob([JSON.stringify(combined, null, 2)], { type: 'application/json' });
-      const label = typeof count === 'number' ? `last-${list.length}` : 'all';
+      const rangeLabel = days == null ? 'all' : `last-${days}d`;
+      const detailLabel = detail === 'succinct' ? 'succinct' : 'verbose';
       downloadBlob(
         blob,
-        `roblox-snapshots-combined-${label}-` + new Date().toISOString().replace(/[:.]/g, '-') + '.json'
+        `roblox-snapshots-combined-${rangeLabel}-${detailLabel}-` +
+          new Date().toISOString().replace(/[:.]/g, '-') +
+          '.json'
       );
     },
     [snapshots]

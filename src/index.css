@@ -104,5 +104,6 @@ tr:hover td { background: var(--bg2); }
 }
 .modal-input-row input[type=number]:focus { border-color: var(--text2); }
 .modal-help { font-size: 12px; color: var(--text2); }
+.modal-note { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
 .modal-summary { font-size: 12px; color: var(--text2); background: var(--bg2); border-radius: var(--radius); padding: 8px 10px; margin-bottom: 16px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
