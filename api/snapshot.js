@@ -31,6 +31,9 @@ function normalizeGames(data) {
     totalUpVotes: g.totalUpVotes || g.upVotes || 0,
     totalDownVotes: g.totalDownVotes || g.downVotes || 0,
     ageRecommendationDisplayName: g.ageRecommendationDisplayName || g.ageRecommendation || '',
+    genreL1: g.genreL1 || '',
+    minimumAge: g.minimumAge ?? 0,
+    contentMaturity: g.contentMaturity || '',
   }));
 }
 
@@ -56,6 +59,9 @@ function mapGames(list) {
     approvalRatingPercentage: approvalScore(g),
     upVotes: g.totalUpVotes,
     downVotes: g.totalDownVotes,
+    genre: g.genreL1,
+    minimumAge: g.minimumAge,
+    contentMaturity: g.contentMaturity,
   }));
 }
 

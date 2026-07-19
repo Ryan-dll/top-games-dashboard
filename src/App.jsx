@@ -30,6 +30,9 @@ function mapGamesForSnapshot(list) {
     approvalRatingPercentage: approvalScore(g),
     upVotes: g.totalUpVotes,
     downVotes: g.totalDownVotes,
+    genre: g.genreL1,
+    minimumAge: g.minimumAge,
+    contentMaturity: g.contentMaturity,
   }));
 }
 
